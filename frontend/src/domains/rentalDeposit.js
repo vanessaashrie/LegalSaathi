@@ -1,6 +1,9 @@
 // Domain pack: residential rental security deposit disputes (tier 1, verified).
 // Legal sources for this pack are added in Phase 5 after checking official text.
 
+const CAUTION =
+  "No verified legal source is connected yet, so nothing in this reply is checked. In the finished system every legal point will show its source (title, section, central or state law, link, date checked), and points without a verified source will be labelled unverified.";
+
 export default {
   id: "rentalDeposit",
   name: "Rental security deposit",
@@ -34,19 +37,25 @@ export default {
     ],
     missing: [],
   },
-  // Fake reply used until the backend is connected. Source is a PLACEHOLDER.
-  mockReply: {
-    role: "assistant",
-    text: "Thanks. To understand your position I need a few details. Do you have a written rental agreement, and what does it say about returning the deposit? Also, has the landlord given any reason for keeping it?",
-    sources: [
-      {
-        id: "MOCK-1",
-        title: "Placeholder source (mock data)",
-        section: "n/a",
-        jurisdiction: "n/a",
-        url: "#",
-        verified_on: "not verified",
-      },
-    ],
-  },
+  // Placeholder follow-up questions used until the backend is connected.
+  mockReplies: [
+    {
+      role: "assistant",
+      text: "Thanks. I need a few details before I can say where you stand. Do you have a written rental agreement, and what does it say about returning the deposit?",
+      sources: [],
+      caution: CAUTION,
+    },
+    {
+      role: "assistant",
+      text: "Understood. When exactly did you move out, and did you give your landlord notice before leaving? Has the landlord given any reason for keeping the money?",
+      sources: [],
+      caution: CAUTION,
+    },
+    {
+      role: "assistant",
+      text: "Thank you. What proof do you have? For example the payment record for the deposit, messages with the landlord, or photos from move-out. Tick what you have in the evidence checklist.",
+      sources: [],
+      caution: CAUTION,
+    },
+  ],
 };

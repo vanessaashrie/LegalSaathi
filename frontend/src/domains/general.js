@@ -9,7 +9,7 @@ export default {
   tierLabel: "General mode: no legal citations",
   tagline: "Any legal problem",
   greeting:
-    "Hello, I'm LegalSaathi. Tell me about your legal problem in your own words: a deposit, a refund, unpaid salary, a notice you received, or anything else. I will ask about anything that is missing. For some topics I have verified legal sources and will show them. For others I will tell you clearly that I don't, and I will not quote laws or sections from memory.",
+    "Hello, I'm LegalSaathi. Tell me about your legal problem in your own words.",
   suggestions: [
     "My landlord won't return my deposit",
     "A company has not refunded my money",

@@ -16,6 +16,9 @@ export default function Consultation({
   const [thinking, setThinking] = useState(false);
 
   function handleSend(text) {
+    // How many user messages came before this one: picks the next placeholder reply
+    const userCount = messages.filter((m) => m.role === "user").length;
+
     setMessages((prev) => [...prev, { role: "user", text, sources: [] }]);
 
     // Mock topic detection: only move from general to a more specific pack
@@ -26,10 +29,12 @@ export default function Consultation({
       onSwitchDomain(detected);
     }
 
+    const reply = active.mockReplies[userCount % active.mockReplies.length];
+
     setThinking(true);
     // Fake delay and fake reply. Replaced by a backend call in Phase 5.
     setTimeout(() => {
-      setMessages((prev) => [...prev, active.mockReply]);
+      setMessages((prev) => [...prev, reply]);
       setThinking(false);
     }, 800);
   }
@@ -87,6 +92,48 @@ export default function Consultation({
         <span className="ml-3 text-xs text-amber-800">
           Mock data: replies are placeholders until the AI is connected.
         </span>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 pb-3">
+        <details className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <summary className="cursor-pointer font-medium">
+            Legal sources and caution
+          </summary>
+          <div className="mt-2 space-y-2">
+            <p>
+              LegalSaathi is an AI tool, not a lawyer. It can be wrong, and it
+              cannot guarantee any outcome.
+            </p>
+            <p>
+              <span className="font-semibold">How sources will appear:</span>{" "}
+              each legal point is shown with its source: title, section,
+              whether it is central or state law, a link, and the date we last
+              checked it. A point with no verified source is labelled
+              unverified. Right now no sources are connected.
+            </p>
+            <p>
+              <span className="font-semibold">Check for yourself:</span> India
+              Code publishes central legislation at{" "}
+              <a
+                href="https://www.indiacode.nic.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                indiacode.nic.in
+              </a>
+              . State laws and rules are published by each state government.
+              Laws change, so confirm the current version.
+            </p>
+            <p>
+              <span className="font-semibold">Talk to a lawyer</span> if you
+              have received a court notice, there is a deadline, the amount is
+              large, or there is any risk of arrest or violence. If cost is a
+              problem, free legal aid is available through your District Legal
+              Services Authority.
+            </p>
+          </div>
+        </details>
       </div>
 
       <main className="mx-auto grid max-w-6xl gap-4 px-4 pb-8 lg:grid-cols-2">

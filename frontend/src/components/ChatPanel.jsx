@@ -49,13 +49,28 @@ export default function ChatPanel({ messages, onSend, thinking, suggestions }) {
                       <li key={s.id} className="text-xs text-slate-600">
                         {s.title} | {s.section} | {s.jurisdiction} | verified:{" "}
                         {s.verified_on}{" "}
-                        <a href={s.url} className="text-indigo-700 underline">
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-700 underline"
+                        >
                           link
                         </a>
                       </li>
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {m.caution && (
+                <p
+                  className="mt-2 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900"
+                  role="note"
+                >
+                  <span className="font-semibold">Caution: </span>
+                  {m.caution}
+                </p>
               )}
             </div>
           </div>
