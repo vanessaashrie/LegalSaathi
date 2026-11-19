@@ -1,12 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const SUGGESTIONS = [
-  "My landlord won't return my deposit",
-  "I have no written agreement",
-  "What can I do next?",
-];
-
-export default function ChatPanel({ messages, onSend, thinking }) {
+export default function ChatPanel({ messages, onSend, thinking, suggestions }) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef(null);
 
@@ -76,7 +70,7 @@ export default function ChatPanel({ messages, onSend, thinking }) {
 
       <div className="border-t border-slate-200 p-3">
         <div className="mb-2 flex flex-wrap gap-2">
-          {SUGGESTIONS.map((s) => (
+          {(suggestions || []).map((s) => (
             <button
               key={s}
               onClick={() => send(s)}

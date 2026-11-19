@@ -9,12 +9,12 @@ export default function Landing({ onStart }) {
       body: "Your story becomes a structured case: dates, amounts, evidence. You can correct anything.",
     },
     {
-      title: "Understand your options",
-      body: "Get a plain-language explanation, with the sources it comes from.",
+      title: "Understand where you stand",
+      body: "Plain-language explanation. Legal sources are shown only where we have verified ones.",
     },
     {
       title: "Get a draft notice",
-      body: "Generate an editable refund-demand notice using your facts. Missing details are flagged.",
+      body: "Generate an editable notice from your facts. Missing details are flagged.",
     },
   ];
 
@@ -28,12 +28,13 @@ export default function Landing({ onStart }) {
       <main className="mx-auto max-w-5xl px-6 pb-16">
         <section className="py-10">
           <h1 className="max-w-3xl text-4xl font-bold leading-tight">
-            Landlord not returning your security deposit?
+            Got a legal problem and not sure what to do next?
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-slate-600">
             LegalSaathi helps you turn your story into an organised case,
             understand where you stand, and prepare a formal notice, in plain
-            language.
+            language. Describe any problem: a deposit, a refund, unpaid salary,
+            a notice you received.
           </p>
           <button
             onClick={onStart}
@@ -48,9 +49,7 @@ export default function Landing({ onStart }) {
           <ol className="mt-4 grid gap-4 sm:grid-cols-2">
             {steps.map((s, i) => (
               <li key={s.title} className="rounded-xl bg-white p-5 shadow-sm">
-                <p className="text-sm font-medium text-indigo-600">
-                  Step {i + 1}
-                </p>
+                <p className="text-sm font-medium text-indigo-600">Step {i + 1}</p>
                 <h3 className="mt-1 font-semibold">{s.title}</h3>
                 <p className="mt-1 text-sm text-slate-600">{s.body}</p>
               </li>
@@ -58,29 +57,41 @@ export default function Landing({ onStart }) {
           </ol>
         </section>
 
-        <section className="grid gap-4 py-8 sm:grid-cols-2">
+        <section className="grid gap-4 py-4 sm:grid-cols-2">
           <div className="rounded-xl bg-white p-5 shadow-sm">
-            <h2 className="font-semibold">What it covers</h2>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-              <li>Residential rental security deposit disputes</li>
-              <li>Building a case from your description</li>
-              <li>Plain-language options, with cited sources</li>
-              <li>A draft refund-demand notice</li>
-            </ul>
+            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+              Verified sources
+            </span>
+            <p className="mt-2 text-sm text-slate-600">
+              For topics we have checked against official text (currently
+              rental security deposits), explanations cite their sources and the
+              date they were checked.
+            </p>
           </div>
           <div className="rounded-xl bg-white p-5 shadow-sm">
-            <h2 className="font-semibold">What it does not cover</h2>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-              <li>Commercial leases, eviction, or criminal matters</li>
-              <li>Consumer and employment disputes (not yet)</li>
-              <li>Predicting court outcomes</li>
-              <li>Every state's rules: law varies by state and agreement</li>
-            </ul>
+            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+              General mode
+            </span>
+            <p className="mt-2 text-sm text-slate-600">
+              For every other problem we organise your facts, ask what is
+              missing and draft a notice from your facts. We do not quote laws,
+              because we have no verified sources for those topics. A lawyer is
+              always recommended.
+            </p>
           </div>
         </section>
 
+        <section className="py-4 text-sm text-slate-600">
+          <h2 className="font-semibold text-slate-900">Not covered</h2>
+          <p className="mt-1">
+            Predicting court outcomes, criminal matters, and urgent situations
+            involving arrest, violence or court deadlines. For those, contact a
+            lawyer or your District Legal Services Authority right away.
+          </p>
+        </section>
+
         <section
-          className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900"
+          className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900"
           role="note"
         >
           <h2 className="font-semibold">Please read</h2>

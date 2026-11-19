@@ -23,8 +23,8 @@ export default function CasePanel({ caseFile, onEditField, onToggleEvidence }) {
       <div>
         <h2 className="text-lg font-semibold">Your case file</h2>
         <p className="text-sm text-slate-600">
-          Check each item. Edit anything that is wrong: edited items are marked
-          as confirmed by you.
+          This fills in as you talk. Check each item and edit anything that is
+          wrong: edited items are marked as confirmed by you.
         </p>
       </div>
 
@@ -50,17 +50,23 @@ export default function CasePanel({ caseFile, onEditField, onToggleEvidence }) {
 
       <div>
         <h3 className="font-semibold">Timeline</h3>
-        <ol className="mt-2 space-y-2">
-          {caseFile.timeline.map((t, i) => (
-            <li key={i} className="rounded-lg border border-slate-200 p-2 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{t.date}</span>
-                <Badge status={t.status} />
-              </div>
-              <p className="mt-1 text-slate-700">{t.event}</p>
-            </li>
-          ))}
-        </ol>
+        {caseFile.timeline.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">
+            No events yet. They appear as you describe what happened.
+          </p>
+        ) : (
+          <ol className="mt-2 space-y-2">
+            {caseFile.timeline.map((t, i) => (
+              <li key={i} className="rounded-lg border border-slate-200 p-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{t.date}</span>
+                  <Badge status={t.status} />
+                </div>
+                <p className="mt-1 text-slate-700">{t.event}</p>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       <div>
@@ -84,11 +90,17 @@ export default function CasePanel({ caseFile, onEditField, onToggleEvidence }) {
 
       <div>
         <h3 className="font-semibold">Still missing</h3>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-          {caseFile.missing.map((m, i) => (
-            <li key={i}>{m}</li>
-          ))}
-        </ul>
+        {caseFile.missing.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">
+            Nothing flagged yet. Missing details are listed here as you chat.
+          </p>
+        ) : (
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+            {caseFile.missing.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
