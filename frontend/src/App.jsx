@@ -1,7 +1,9 @@
 import { useState } from "react";
 import Landing from "./components/Landing";
 import Consultation from "./components/Consultation";
+import DocumentScreen from "./components/DocumentScreen";
 import { domains } from "./domains";
+import { generateNotice } from "./documents/templates";
 
 export default function App() {
   // Which screen is showing: "landing" | "consult" | "document"
@@ -10,18 +12,21 @@ export default function App() {
   const [domain, setDomain] = useState(domains.general);
   const [messages, setMessages] = useState([]);
   const [caseFile, setCaseFile] = useState(domains.general.initialCase);
+  const [draft, setDraft] = useState("");
 
   function startConsultation() {
     const d = domains.general;
     setDomain(d);
     setMessages([{ role: "assistant", text: d.greeting, sources: [] }]);
     setCaseFile(d.initialCase);
+    setDraft("");
     setView("consult");
   }
 
   // Switch to a more specific pack without losing anything the user entered
   function switchDomain(newDomain) {
     setDomain(newDomain);
+    setDraft(""); // an old draft would use the wrong template
     setCaseFile((prev) => {
       const prevByKey = Object.fromEntries(prev.fields.map((f) => [f.key, f]));
       const newKeys = new Set(newDomain.initialCase.fields.map((f) => f.key));
@@ -41,6 +46,12 @@ export default function App() {
     });
   }
 
+  function openDocument() {
+    // Build the first draft once; later edits are kept in `draft`
+    if (!draft) setDraft(generateNotice(domain, caseFile));
+    setView("document");
+  }
+
   if (view === "landing") {
     return <Landing onStart={startConsultation} />;
   }
@@ -55,23 +66,18 @@ export default function App() {
         setCaseFile={setCaseFile}
         onSwitchDomain={switchDomain}
         onBack={() => setView("landing")}
-        onDocument={() => setView("document")}
+        onDocument={openDocument}
       />
     );
   }
 
-  // Placeholder until we build the document screen
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <div className="rounded-xl bg-white p-6 shadow">
-        <p className="text-slate-700">Document screen coming soon.</p>
-        <button
-          onClick={() => setView("consult")}
-          className="mt-3 text-sm text-indigo-600 underline"
-        >
-          Back to consultation
-        </button>
-      </div>
-    </main>
+    <DocumentScreen
+      domain={domain}
+      caseFile={caseFile}
+      draft={draft}
+      setDraft={setDraft}
+      onBack={() => setView("consult")}
+    />
   );
 }

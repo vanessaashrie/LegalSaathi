@@ -2,6 +2,7 @@ const STATUS = {
   user_stated: { label: "From your story", style: "bg-blue-100 text-blue-800" },
   needs_confirmation: { label: "Please confirm", style: "bg-amber-100 text-amber-900" },
   unknown: { label: "Not provided", style: "bg-slate-200 text-slate-700" },
+  edited: { label: "Edited: not submitted", style: "bg-indigo-100 text-indigo-800" },
   confirmed: { label: "Confirmed by you", style: "bg-green-100 text-green-800" },
 };
 
@@ -14,7 +15,15 @@ function Badge({ status }) {
   );
 }
 
-export default function CasePanel({ caseFile, onEditField, onToggleEvidence }) {
+export default function CasePanel({
+  caseFile,
+  onEditField,
+  onToggleEvidence,
+  onSubmit,
+  disabled,
+}) {
+  const editedCount = caseFile.fields.filter((f) => f.status === "edited").length;
+
   return (
     <section
       className="h-[75vh] space-y-6 overflow-y-auto rounded-xl bg-white p-4 shadow-sm"
@@ -23,8 +32,8 @@ export default function CasePanel({ caseFile, onEditField, onToggleEvidence }) {
       <div>
         <h2 className="text-lg font-semibold">Your case file</h2>
         <p className="text-sm text-slate-600">
-          This fills in as you talk. Check each item and edit anything that is
-          wrong: edited items are marked as confirmed by you.
+          This fills in as you talk. Edit anything that is wrong or missing,
+          then press Submit details so the assistant uses it.
         </p>
       </div>
 
@@ -101,6 +110,21 @@ export default function CasePanel({ caseFile, onEditField, onToggleEvidence }) {
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="sticky bottom-0 -mx-4 -mb-4 border-t border-slate-200 bg-white p-3">
+        <button
+          onClick={onSubmit}
+          disabled={editedCount === 0 || disabled}
+          className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {editedCount > 0 ? `Submit details (${editedCount})` : "Submit details"}
+        </button>
+        <p className="mt-1 text-xs text-slate-500">
+          {editedCount > 0
+            ? "Submitting marks these as confirmed by you and sends them to the assistant."
+            : "Edit a field above to enable this."}
+        </p>
       </div>
     </section>
   );

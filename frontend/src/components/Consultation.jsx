@@ -39,12 +39,13 @@ export default function Consultation({
     }, 800);
   }
 
+  // Typing marks a field "edited" (not yet submitted); clearing it makes it "unknown"
   function handleEditField(key, value) {
     setCaseFile((prev) => ({
       ...prev,
       fields: prev.fields.map((f) =>
         f.key === key
-          ? { ...f, value, status: value.trim() === "" ? "unknown" : "confirmed" }
+          ? { ...f, value, status: value.trim() === "" ? "unknown" : "edited" }
           : f
       ),
     }));
@@ -57,6 +58,27 @@ export default function Consultation({
         i === index ? { ...e, have: !e.have } : e
       ),
     }));
+  }
+
+  // Confirm the edited fields and tell the assistant about them
+  function handleSubmitCase() {
+    const edited = caseFile.fields.filter((f) => f.status === "edited");
+    if (edited.length === 0 || thinking) return;
+
+    const lines = edited.map((f) => `- ${f.label}: ${f.value}`);
+    const have = caseFile.evidence.filter((e) => e.have).map((e) => e.item);
+    let text = "I have updated my case details:\n" + lines.join("\n");
+    if (have.length > 0) {
+      text += "\nEvidence I have: " + have.join("; ");
+    }
+
+    setCaseFile((prev) => ({
+      ...prev,
+      fields: prev.fields.map((f) =>
+        f.status === "edited" ? { ...f, status: "confirmed" } : f
+      ),
+    }));
+    handleSend(text);
   }
 
   const isVerified = domain.tier === "verified";
@@ -147,6 +169,8 @@ export default function Consultation({
           caseFile={caseFile}
           onEditField={handleEditField}
           onToggleEvidence={handleToggleEvidence}
+          onSubmit={handleSubmitCase}
+          disabled={thinking}
         />
       </main>
     </div>
