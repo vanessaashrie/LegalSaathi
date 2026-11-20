@@ -4,10 +4,11 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.domains import detect_domain
+from app.llm import LLMError, get_provider
+from app.pipeline import run_turn
 from app.schemas import ChatRequest, ChatResponse
-from app.stub_replies import REPLIES
 
-app = FastAPI(title="LegalSaathi API", version="0.2.0")
+app = FastAPI(title="LegalSaathi API", version="0.3.0")
 
 # Only our own frontend may call this API from a browser
 app.add_middleware(
@@ -53,11 +54,10 @@ def chat(req: ChatRequest):
     if domain_id == "general":
         domain_id = detect_domain(last_user.text)
 
-    # PLACEHOLDER: pick the next canned reply. Phase 5 replaces this with
-    # retrieval + LLM + safety checks.
-    user_count = sum(1 for m in req.messages if m.role == "user")
-    replies = REPLIES[domain_id]
-    reply = replies[(user_count - 1) % len(replies)]
+    try:
+        reply, case_file = run_turn(req, domain_id, get_provider())
+    except LLMError as e:
+        # LLMError messages are written to be safe to show the user
+        raise HTTPException(status_code=503, detail=str(e))
 
-    # The case file is returned unchanged for now. Extraction comes in Phase 5.
-    return ChatResponse(domain_id=domain_id, reply=reply, case_file=req.case_file)
+    return ChatResponse(domain_id=domain_id, reply=reply, case_file=case_file)
