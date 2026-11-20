@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function ChatPanel({ messages, onSend, thinking, suggestions }) {
+export default function ChatPanel({
+  messages,
+  onSend,
+  thinking,
+  slow,
+  error,
+  onRetry,
+  suggestions,
+}) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef(null);
 
   // Keep the newest message in view
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, thinking]);
+  }, [messages, thinking, error]);
 
   function send(text) {
     const clean = text.trim();
@@ -75,10 +83,29 @@ export default function ChatPanel({ messages, onSend, thinking, suggestions }) {
             </div>
           </div>
         ))}
+
         {thinking && (
           <p className="text-sm text-slate-500" role="status">
-            LegalSaathi is thinking...
+            {slow
+              ? "The server may be waking up (free hosting). This can take up to 30 seconds..."
+              : "LegalSaathi is thinking..."}
           </p>
+        )}
+
+        {error && (
+          <div
+            className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"
+            role="alert"
+          >
+            <p>{error}</p>
+            <button
+              onClick={onRetry}
+              disabled={thinking}
+              className="mt-2 rounded bg-red-700 px-3 py-1 text-xs font-medium text-white hover:bg-red-800 disabled:opacity-50"
+            >
+              Retry
+            </button>
+          </div>
         )}
         <div ref={bottomRef} />
       </div>
@@ -101,6 +128,7 @@ export default function ChatPanel({ messages, onSend, thinking, suggestions }) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Describe what happened..."
             aria-label="Your message"
+            maxLength={4000}
             className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <button
