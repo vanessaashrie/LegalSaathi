@@ -3,7 +3,8 @@ import { useState } from "react";
 import ChatPanel from "./ChatPanel";
 import CasePanel from "./CasePanel";
 import { sendChat } from "../api";
-import { domains, detectDomain } from "../domains";
+import { domains } from "../domains";
+import { detectDomain } from "../domains";
 
 export default function Consultation({
   domain,
@@ -16,348 +17,302 @@ export default function Consultation({
   onDocument,
 }) {
   const [thinking, setThinking] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const [error, setError] = useState("");
+  const [lastUserMessage, setLastUserMessage] = useState("");
 
-  async function handleSend(text, updatedCaseFile = caseFile) {
-    if (thinking || !text.trim()) return;
+  // Always use the string ID, never the complete domain object.
+  const domainId = domain?.id || "general";
 
-    // STEP 1: Detect the specific domain BEFORE sending the request.
-    let activeDomain = domain;
+  const currentDomain = domains[domainId] || domains.general;
 
-    if (domain.id === "general") {
-      const detected = detectDomain(text);
+  function mergeCaseFiles(current, incoming) {
+    if (!incoming) return current;
 
-      if (detected && detected.id !== "general") {
-        activeDomain = detected;
-        onSwitchDomain(detected);
+    const currentFields = current?.fields || [];
+
+    const fields = (incoming.fields || []).map((newField) => {
+      const existing = currentFields.find(
+        (field) => field.key === newField.key
+      );
+
+      if (
+        existing &&
+        ["edited", "confirmed"].includes(existing.status)
+      ) {
+        return existing;
       }
-    }
 
-    // STEP 2: Prepare the correct domain-specific case file.
-    // This ensures rental fields exist even on the first message.
-    const initialCase = activeDomain.initialCase;
+      return newField;
+    });
 
-    const existingFields = new Map(
-      (updatedCaseFile.fields || []).map((field) => [
-        field.key,
-        field,
-      ])
-    );
+    const currentEvidence = current?.evidence || [];
 
-    const existingEvidence = new Map(
-      (updatedCaseFile.evidence || []).map((item) => [
-        item.item,
-        item,
-      ])
-    );
+    const evidence = (incoming.evidence || []).map((newItem) => {
+      const existing = currentEvidence.find(
+        (item) => item.item === newItem.item
+      );
 
-    const requestCaseFile = {
-      ...initialCase,
-      ...updatedCaseFile,
+      return existing?.have ? existing : newItem;
+    });
 
-      fields: initialCase.fields.map((field) => {
-        const existing = existingFields.get(field.key);
-        return existing || field;
-      }),
-
-      // Preserve manually checked evidence.
-      evidence: initialCase.evidence.map((item) => {
-        const existing = existingEvidence.get(item.item);
-        return existing || item;
-      }),
-
-      timeline: updatedCaseFile.timeline || [],
-      missing: updatedCaseFile.missing || [],
+    return {
+      ...incoming,
+      fields,
+      evidence,
+      timeline: incoming.timeline || current?.timeline || [],
+      missing: incoming.missing || [],
     };
+  }
 
-    // STEP 3: Add the user's message to the conversation.
+  async function handleSend(text) {
+    const clean = text.trim();
+
+    if (!clean || thinking) return;
+
+    setError("");
+    setLastUserMessage(clean);
+    setThinking(true);
+    setSlow(false);
+
     const updatedMessages = [
       ...messages,
-      { role: "user", text, sources: [] },
+      { role: "user", text: clean },
     ];
 
     setMessages(updatedMessages);
-    setThinking(true);
+
+    // Domain detection: general can become specific.
+    let nextDomainId = domainId;
+
+    if (domainId === "general") {
+      const detected = detectDomain(clean);
+
+      if (
+        detected &&
+        detected !== "general" &&
+        domains[detected]
+      ) {
+        nextDomainId = detected;
+        onSwitchDomain(domains[detected]);
+      }
+    }
+
+    const selectedDomain =
+      domains[nextDomainId] || domains.general;
+
+    const initialCase = selectedDomain.initialCase || {};
+
+    // Build the request case file while preserving existing data.
+    const requestCaseFile = {
+      ...initialCase,
+      ...caseFile,
+
+      fields: (initialCase.fields || []).map((initialField) => {
+        const existing = (caseFile?.fields || []).find(
+          (field) => field.key === initialField.key
+        );
+
+        return existing || initialField;
+      }),
+
+      timeline:
+        caseFile?.timeline || initialCase.timeline || [],
+
+      evidence: (initialCase.evidence || []).map((initialItem) => {
+        const existing = (caseFile?.evidence || []).find(
+          (item) => item.item === initialItem.item
+        );
+
+        return existing || initialItem;
+      }),
+
+      missing: caseFile?.missing || [],
+    };
+
+    setCaseFile(requestCaseFile);
 
     try {
-      // STEP 4: Send the detected domain and correct case file.
-      const data = await sendChat({
-        domainId: activeDomain.id,
-        messages: updatedMessages,
-        caseFile: requestCaseFile,
+      const response = await sendChat({
+        domain_id: nextDomainId,
+        messages: updatedMessages.slice(-40),
+        case_file: requestCaseFile,
       });
 
-      // STEP 5: Use the domain returned by the backend.
-      const detectedDomain = domains[data.domain_id];
-
-      if (detectedDomain && detectedDomain.id !== activeDomain.id) {
-        activeDomain = detectedDomain;
-        onSwitchDomain(detectedDomain);
+      if (
+        response.domain_id &&
+        response.domain_id !== nextDomainId &&
+        domains[response.domain_id]
+      ) {
+        onSwitchDomain(domains[response.domain_id]);
       }
 
-      // STEP 6: Apply the backend's updated case file.
-      // Never overwrite locally edited or confirmed fields.
-      if (data.case_file) {
-        setCaseFile((previous) => {
-          const localFields = new Map(
-            previous.fields.map((field) => [
-              field.key,
-              field,
-            ])
-          );
+      setCaseFile((current) =>
+        mergeCaseFiles(current, response.case_file)
+      );
 
-          const returnedFields = (
-            data.case_file.fields || []
-          ).map((field) => {
-            const local = localFields.get(field.key);
-
-            if (
-              local &&
-              (local.status === "edited" ||
-                local.status === "confirmed")
-            ) {
-              return local;
-            }
-
-            return field;
-          });
-
-          const returnedKeys = new Set(
-            returnedFields.map((field) => field.key)
-          );
-
-          const extraLocalFields = previous.fields.filter(
-            (field) => !returnedKeys.has(field.key)
-          );
-
-          // Preserve locally checked evidence.
-          const localEvidence = new Map(
-            previous.evidence.map((item) => [
-              item.item,
-              item,
-            ])
-          );
-
-          const returnedEvidence = (
-            data.case_file.evidence || []
-          ).map((item) => {
-            const local = localEvidence.get(item.item);
-            return local?.have ? local : item;
-          });
-
-          const evidenceNames = new Set(
-            returnedEvidence.map((item) => item.item)
-          );
-
-          const extraEvidence = previous.evidence.filter(
-            (item) => !evidenceNames.has(item.item)
-          );
-
-          return {
-            ...data.case_file,
-            fields: [
-              ...returnedFields,
-              ...extraLocalFields,
-            ],
-            evidence: [
-              ...returnedEvidence,
-              ...extraEvidence,
-            ],
-          };
-        });
-      }
-
-      // STEP 7: Display the actual Gemini response.
-      setMessages((previous) => [
-        ...previous,
+      setMessages((current) => [
+        ...current,
         {
           role: "assistant",
-          ...data.reply,
+          text:
+            response.reply?.text ||
+            "I couldn't generate a response. Please try again.",
+          sources: response.reply?.sources || [],
+          caution: response.reply?.caution || "",
+          needs_lawyer: response.reply?.needs_lawyer || false,
+          escalation_reasons:
+            response.reply?.escalation_reasons || [],
         },
       ]);
-    } catch (error) {
-      setMessages((previous) => [
-        ...previous,
-        {
-          role: "assistant",
-          text: `I couldn't process your message. ${error.message}`,
-          sources: [],
-          caution:
-            "Please try again. Your message has not been successfully processed.",
-        },
-      ]);
+    } catch (err) {
+      setError(
+        err.message ||
+          "Something went wrong while contacting LegalSaathi."
+      );
     } finally {
       setThinking(false);
+      setSlow(false);
     }
   }
 
-  // Typing marks a field as edited.
-  // Clearing it makes the field unknown.
-  function handleEditField(key, value) {
-    setCaseFile((prev) => ({
-      ...prev,
-      fields: prev.fields.map((field) =>
-        field.key === key
-          ? {
-              ...field,
-              value,
-              status:
-                value.trim() === "" ? "unknown" : "edited",
-            }
-          : field
-      ),
-    }));
+  function handleRetry() {
+    if (!lastUserMessage || thinking) return;
+
+    const messageToRetry = lastUserMessage;
+
+    setMessages((current) => {
+      const updated = [...current];
+
+      if (updated[updated.length - 1]?.role === "user") {
+        updated.pop();
+      }
+
+      return updated;
+    });
+
+    handleSend(messageToRetry);
   }
 
-  // Allow users to manually check or uncheck evidence.
-  function handleToggleEvidence(index) {
-    setCaseFile((prev) => ({
-      ...prev,
-      evidence: prev.evidence.map((item, i) =>
-        i === index
-          ? { ...item, have: !item.have }
-          : item
-      ),
-    }));
-  }
-
-  // Confirm edited fields and send the details to Gemini.
-  function handleSubmitCase() {
-    const edited = caseFile.fields.filter(
+  function handleSubmitDetails() {
+    const editedFields = (caseFile?.fields || []).filter(
       (field) => field.status === "edited"
     );
 
-    if (edited.length === 0 || thinking) return;
+    if (editedFields.length === 0) return;
 
-    const lines = edited.map(
-      (field) => `- ${field.label}: ${field.value}`
+    const confirmedFields = (caseFile.fields || []).map((field) =>
+      field.status === "edited"
+        ? { ...field, status: "confirmed" }
+        : field
     );
 
-    const have = caseFile.evidence
-      .filter((item) => item.have)
-      .map((item) => item.item);
+    setCaseFile((current) => ({
+      ...current,
+      fields: confirmedFields,
+    }));
 
-    let text =
-      "I have updated my case details:\n" +
-      lines.join("\n");
+    const summary = editedFields
+      .map((field) => `${field.label}: ${field.value}`)
+      .join("\n");
 
-    if (have.length > 0) {
-      text += "\nEvidence I have: " + have.join("; ");
-    }
-
-    const confirmedCaseFile = {
-      ...caseFile,
-      fields: caseFile.fields.map((field) =>
-        field.status === "edited"
-          ? { ...field, status: "confirmed" }
-          : field
-      ),
-    };
-
-    setCaseFile(confirmedCaseFile);
-    handleSend(text, confirmedCaseFile);
+    handleSend(
+      `I have reviewed and confirmed these case details:\n${summary}`
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <button
-          onClick={onBack}
-          className="text-sm text-indigo-700 underline"
-        >
-          Back to home
-        </button>
-
-        <div className="text-center">
-          <p className="text-lg font-semibold">LegalSaathi</p>
-          <p className="text-xs text-slate-600">
-            Topic: {domain.name}
-          </p>
-        </div>
-
-        <button
-          onClick={onDocument}
-          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          Draft a notice
-        </button>
-      </header>
-
-      <div className="mx-auto max-w-6xl px-4 pb-3">
-        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
-          {domain.tierLabel}
-        </span>
-
-        <span className="ml-3 text-xs text-green-700">
-          AI-powered consultation
-        </span>
-      </div>
-
-      <div className="mx-auto max-w-6xl px-4 pb-3">
-        <details className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <summary className="cursor-pointer font-medium">
-            Legal sources and caution
-          </summary>
-
-          <div className="mt-2 space-y-2">
-            <p>
-              LegalSaathi is an AI tool, not a lawyer. It can be
-              wrong, and it cannot guarantee any outcome.
-            </p>
-
-            <p>
-              <span className="font-semibold">Sources:</span>{" "}
-              Legal sources are not connected yet. No legal
-              claim should be treated as verified until a
-              source is provided and checked.
-            </p>
-
-            <p>
-              <span className="font-semibold">
-                Check for yourself:
-              </span>{" "}
-              India Code publishes central legislation at{" "}
-              <a
-                href="https://www.indiacode.nic.in/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                indiacode.nic.in
-              </a>
-              . State laws and rules are published by each
-              state government.
-            </p>
-
-            <p>
-              <span className="font-semibold">
-                Talk to a lawyer
-              </span>{" "}
-              if you have received a court notice, there is a
-              deadline, the amount is large, or there is any
-              risk of arrest or violence. Free legal aid may
-              be available through your District Legal
-              Services Authority.
+    <main className="min-h-screen bg-slate-50">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <div>
+            <h1 className="text-xl font-bold text-indigo-700">
+              LegalSaathi
+            </h1>
+            <p className="text-xs text-slate-500">
+              Your legal problem, organised.
             </p>
           </div>
-        </details>
+
+          <div className="flex gap-2">
+            <button
+              onClick={onBack}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Back
+            </button>
+
+            <button
+              onClick={onDocument}
+              className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+            >
+              Draft a notice
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-6xl px-4 py-3">
+        <p className="text-sm font-semibold text-slate-700">
+          {currentDomain.name}
+        </p>
+        <p className="text-xs text-slate-500">
+          AI-powered legal problem organisation
+        </p>
       </div>
 
-      <main className="mx-auto grid max-w-6xl gap-4 px-4 pb-8 lg:grid-cols-2">
-        <ChatPanel
-          messages={messages}
-          onSend={handleSend}
-          thinking={thinking}
-          suggestions={domain.suggestions}
-        />
+      {/* Persistent legal disclaimer */}
+      <div className="mx-auto max-w-6xl px-4 pb-3">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="mb-1 font-semibold">
+            Important: Please read before proceeding
+          </p>
 
-        <CasePanel
-          caseFile={caseFile}
-          onEditField={handleEditField}
-          onToggleEvidence={handleToggleEvidence}
-          onSubmit={handleSubmitCase}
-          disabled={thinking}
-        />
-      </main>
-    </div>
+          <p>
+            LegalSaathi is an AI assistant, not a lawyer.
+            Its responses may be incomplete or inaccurate
+            and are not a substitute for professional legal
+            advice. Verify legal information with official
+            sources and consult a qualified lawyer before
+            taking legal action.
+          </p>
+
+          <p className="mt-2">
+            Legal sources are not currently connected. You
+            can check central legislation at{" "}
+            <a
+              href="https://www.indiacode.nic.in/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium underline"
+            >
+              India Code
+            </a>.
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 pb-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <ChatPanel
+            messages={messages}
+            onSend={handleSend}
+            thinking={thinking}
+            slow={slow}
+            error={error}
+            onRetry={handleRetry}
+            suggestions={currentDomain.suggestions}
+          />
+        </div>
+
+        <div className="lg:col-span-1">
+          <CasePanel
+            caseFile={caseFile}
+            setCaseFile={setCaseFile}
+            onSubmit={handleSubmitDetails}
+          />
+        </div>
+      </div>
+    </main>
   );
 }
