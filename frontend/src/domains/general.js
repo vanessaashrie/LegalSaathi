@@ -2,6 +2,9 @@
 // No verified legal sources: it organises facts and drafts from facts only.
 // The app switches to a verified pack when it recognises a covered topic.
 
+const CAUTION =
+  "I have no verified legal sources for this topic, so I cannot say which law applies or what a court would decide. Check official sources such as India Code, and speak to a lawyer before acting on a legal point.";
+
 export default {
   id: "general",
   name: "General consultation",
@@ -35,9 +38,25 @@ export default {
     ],
     missing: [],
   },
-  mockReply: {
-    role: "assistant",
-    text: "Thanks. To organise your case I need the basics: who is the problem with, what happened and when, how much money is involved, and what outcome you want. I don't have verified legal sources for this topic, so I can't tell you which law applies.",
-    sources: [],
-  },
+  // Placeholder follow-up questions used until the backend is connected.
+  mockReplies: [
+    {
+      role: "assistant",
+      text: "Thanks. To organise your case I need the basics: who is the problem with, what happened and when, and how much money is involved?",
+      sources: [],
+      caution: CAUTION,
+    },
+    {
+      role: "assistant",
+      text: "Understood. What outcome do you want, and what have you already tried, for example messages, calls or a complaint?",
+      sources: [],
+      caution: CAUTION,
+    },
+    {
+      role: "assistant",
+      text: "Thank you. What documents or proof do you have, such as a contract, receipts, emails or messages? Tick them in the evidence checklist. If you received a notice or there is a deadline, tell me the date.",
+      sources: [],
+      caution: CAUTION,
+    },
+  ],
 };
